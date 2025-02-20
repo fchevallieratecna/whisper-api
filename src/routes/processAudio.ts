@@ -38,13 +38,15 @@ const processHandler: RequestHandler = async (req: Request, res: Response): Prom
       return;
     }
     const options = optionsResult.data;
+    const startTime = Date.now();
     await executeDiarizationProcess(uploadPath, options);
+    const duration = (Date.now() - startTime) / 1000;
 
     const { name } = path.parse(uploadPath);
     const outputType = options.outputType || 'txt';
     const outputFile = path.join(config.uploadPath, `${name}.${outputType}`);
     const data = await fs.readFile(outputFile, 'utf8');
-    res.json({ success: true, outputType, content: data });
+    res.json({ success: true, outputType, content: data, duration });
   } catch (err) {
     console.error("Erreur de traitement :", err);
     res.status(500).json({ success: false, error: "Erreur lors du traitement audio" });
