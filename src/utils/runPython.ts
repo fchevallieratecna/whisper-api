@@ -38,6 +38,10 @@ export function executeDiarizationProcess(filePath: string, options: Diarization
   return new Promise((resolve, reject) => {
     const pythonInterpreter = path.join(config.whisperPath, 'venv/bin/python');
     const args = buildPythonArgs(filePath, options);
+    const completeCommand = [pythonInterpreter, ...args].join(' ');
+    console.log(
+      `\n\x1b[1m\x1b[33m==== COMMANDE PYTHON ====\n${completeCommand}\n===========================\x1b[0m\n`
+    );
     const pyProc = spawn(pythonInterpreter, args, { cwd: config.whisperPath });
     let outputBuffer = '';
 
