@@ -37,6 +37,7 @@ function buildPythonArgs(filePath: string, options: DiarizationOptions): string[
 export function executeDiarizationProcess(filePath: string, options: DiarizationOptions = {}): Promise<string> {
   return new Promise((resolve, reject) => {
     const pythonInterpreter = path.join(config.whisperPath, 'venv/bin/python');
+    console.log(`Using Python interpreter: ${pythonInterpreter}`);
     const args = buildPythonArgs(filePath, options);
     const completeCommand = [pythonInterpreter, ...args].join(' ');
     console.log(
