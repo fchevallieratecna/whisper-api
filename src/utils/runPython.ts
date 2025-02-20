@@ -39,13 +39,16 @@ export function executeDiarizationProcess(filePath: string, options: Diarization
     const pythonInterpreter = path.join(config.whisperPath, 'venv/bin/python');
     const args = buildPythonArgs(filePath, options);
 
-    // Nouvelle commande : activation du venv avant d'exécuter Python
-    const command = `source ${config.whisperPath}/venv/bin/activate && ${pythonInterpreter} ${args.join(' ')}`;
-
-    console.log(`\n\x1b[1m\x1b[33m==== COMMANDE PYTHON ====\n${command}\n===========================\x1b[0m\n`);
-
-    const pyProc = spawn('/bin/bash', ['-c', command], { cwd: config.whisperPath, shell: true });
-
+    const pyProc = spawn(pythonInterpreter, args, {
+      cwd: config.whisperPath,
+      env: {
+        ...process.env,
+        VIRTUAL_ENV: path.join(config.whisperPath, 'venv'),
+        PATH: `${path.join(config.whisperPath, 'venv/bin')}:${process.env.PATH}`,
+        PYTHONPATH: path.join(config.whisperPath, 'venv/lib/python3.11/site-packages')
+      }
+    });
+    
     let outputBuffer = '';
 
     pyProc.stdout.on('data', data => {
