@@ -37,13 +37,15 @@ function buildPythonArgs(filePath: string, options: DiarizationOptions): string[
 export function executeDiarizationProcess(filePath: string, options: DiarizationOptions = {}): Promise<string> {
   return new Promise((resolve, reject) => {
     const pythonInterpreter = path.join(config.whisperPath, 'venv/bin/python');
-    console.log(`Using Python interpreter: ${pythonInterpreter}`);
     const args = buildPythonArgs(filePath, options);
-    const completeCommand = [pythonInterpreter, ...args].join(' ');
-    console.log(
-      `\n\x1b[1m\x1b[33m==== COMMANDE PYTHON ====\n${completeCommand}\n===========================\x1b[0m\n`
-    );
-    const pyProc = spawn(pythonInterpreter, args, { cwd: config.whisperPath });
+
+    // Nouvelle commande : activation du venv avant d'exécuter Python
+    const command = `source ${config.whisperPath}/venv/bin/activate && ${pythonInterpreter} ${args.join(' ')}`;
+
+    console.log(`\n\x1b[1m\x1b[33m==== COMMANDE PYTHON ====\n${command}\n===========================\x1b[0m\n`);
+
+    const pyProc = spawn('/bin/bash', ['-c', command], { cwd: config.whisperPath, shell: true });
+
     let outputBuffer = '';
 
     pyProc.stdout.on('data', data => {
