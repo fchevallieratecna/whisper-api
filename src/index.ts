@@ -4,12 +4,14 @@ import fileUpload from 'express-fileupload';
 import processAudioRoute from './routes/processAudio';
 import config from './config';
 import morgan from 'morgan';
+import cors from 'cors';
 
 const app = express();
 
 app.use(express.json());
 app.use(fileUpload());
 app.use(morgan('combined'));
+app.use(cors());
 
 // Routes centralisées sous le préfixe /api
 app.use('/api', processAudioRoute);
