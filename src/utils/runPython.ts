@@ -39,6 +39,10 @@ export function executeDiarizationProcess(filePath: string, options: Diarization
     const pythonInterpreter = path.join(config.whisperPath, 'venv/bin/python');
     const args = buildPythonArgs(filePath, options);
 
+    console.log('\n' + '='.repeat(80));
+    console.log('Commande exécutée:', [pythonInterpreter, ...args].join(' '));
+    console.log('='.repeat(80) + '\n');
+
     const pyProc = spawn(pythonInterpreter, args, {
       cwd: config.whisperPath,
       env: {
