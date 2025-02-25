@@ -58,21 +58,31 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
     
     // Exécuter la commande
     console.log(`Exécution de la commande: ${command}`);
-    exec(command, async (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Erreur d'exécution: ${error.message}`);
-        console.error(`stderr: ${stderr}`);
+    
+    // Utiliser spawn au lieu de exec pour capturer la sortie en temps réel
+    const childProcess = require('child_process').spawn(command, [], { 
+      shell: true,
+      stdio: 'pipe'
+    });
+    
+    // Capturer la sortie standard en temps réel
+    childProcess.stdout.on('data', (data) => {
+      console.log(`stdout: ${data.toString()}`);
+    });
+    
+    // Capturer la sortie d'erreur en temps réel
+    childProcess.stderr.on('data', (data) => {
+      console.log(`stderr: ${data.toString()}`);
+    });
+    
+    // Gérer la fin du processus
+    childProcess.on('close', async (code) => {
+      console.log(`Le processus s'est terminé avec le code: ${code}`);
+      
+      if (code !== 0) {
+        console.error(`Erreur: le processus s'est terminé avec le code ${code}`);
         res.status(500).json({ success: false, error: 'Erreur lors du traitement audio' });
         return;
-      }
-      
-      // Logs de la sortie standard
-      console.log(`Sortie standard de la commande:`);
-      console.log(stdout);
-      
-      if (stderr) {
-        console.log(`Sortie d'erreur de la commande (non fatale):`);
-        console.log(stderr);
       }
       
       try {
