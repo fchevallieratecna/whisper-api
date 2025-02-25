@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
 import { UploadedFile, FileArray } from 'express-fileupload';
-import { exec } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -66,17 +65,17 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
     });
     
     // Capturer la sortie standard en temps réel
-    childProcess.stdout.on('data', (data) => {
+    childProcess.stdout.on('data', (data: Buffer) => {
       console.log(`stdout: ${data.toString()}`);
     });
     
     // Capturer la sortie d'erreur en temps réel
-    childProcess.stderr.on('data', (data) => {
+    childProcess.stderr.on('data', (data: Buffer) => {
       console.log(`stderr: ${data.toString()}`);
     });
     
     // Gérer la fin du processus
-    childProcess.on('close', async (code) => {
+    childProcess.on('close', async (code: number) => {
       console.log(`Le processus s'est terminé avec le code: ${code}`);
       
       if (code !== 0) {
