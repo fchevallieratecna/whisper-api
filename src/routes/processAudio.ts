@@ -35,13 +35,15 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
     await audioFile.mv(audioPath);
     
     // Récupérer les paramètres de la requête
-    const outputFormat = req.body.outputFormat || 'json';
+    const outputFormat = req.body.outputFormat || 'txt';
     const model = req.body.model || 'large-v3';
-    const language = req.body.language || '';
-    const batchSize = req.body.batchSize || '4';
+    const language = req.body.language || 'fr';
+    const batchSize = parseInt(req.body.batchSize || '8', 10);
     const computeType = req.body.computeType || 'float16';
     const hfToken = req.body.hfToken || '';
-    const diarize = req.body.diarize === 'true';
+    const diarize = req.body.diarize !== 'false';
+    const initialPrompt = req.body.initialPrompt || '';
+    const debug = req.body.debug === 'true';
     
     // Construire la commande WhisperX CLI
     let command = `whisperx_cli "${audioPath}" --model ${model} --batch_size ${batchSize} --compute_type ${computeType} --output "${outputPath}.${outputFormat}" --output_format ${outputFormat}`;
@@ -51,8 +53,22 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
       command += ` --language ${language}`;
     }
     
-    if (hfToken && diarize) {
-      command += ` --hf_token ${hfToken} --diarize`;
+    if (diarize) {
+      command += ` --diarize`;
+    } else {
+      command += ` --no-diarize`;
+    }
+    
+    if (hfToken) {
+      command += ` --hf_token ${hfToken}`;
+    }
+    
+    if (initialPrompt) {
+      command += ` --initial_prompt "${initialPrompt}"`;
+    }
+    
+    if (debug) {
+      command += ` --debug`;
     }
     
     // Exécuter la commande
