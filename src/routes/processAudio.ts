@@ -57,7 +57,8 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
     }
     
     // Exécuter la commande
-    exec(command, async (error, _stdout, stderr) => {
+    console.log(`Exécution de la commande: ${command}`);
+    exec(command, async (error, stdout, stderr) => {
       if (error) {
         console.error(`Erreur d'exécution: ${error.message}`);
         console.error(`stderr: ${stderr}`);
@@ -65,15 +66,28 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
         return;
       }
       
+      // Logs de la sortie standard
+      console.log(`Sortie standard de la commande:`);
+      console.log(stdout);
+      
+      if (stderr) {
+        console.log(`Sortie d'erreur de la commande (non fatale):`);
+        console.log(stderr);
+      }
+      
       try {
+        console.log(`Tentative de lecture du fichier de sortie: ${outputPath}.${outputFormat}`);
         // Lire le fichier de sortie
         const outputFilePath = `${outputPath}.${outputFormat}`;
         if (!fs.existsSync(outputFilePath)) {
+          console.error(`Fichier de sortie non trouvé: ${outputFilePath}`);
           res.status(500).json({ success: false, error: 'Fichier de sortie non généré' });
           return;
         }
         
+        console.log(`Fichier de sortie trouvé, lecture en cours...`);
         const fileContent = fs.readFileSync(outputFilePath, 'utf8');
+        console.log(`Fichier lu avec succès, taille: ${fileContent.length} caractères`);
         
         // Définir le type de contenu en fonction du format de sortie
         let contentType = 'application/json';
@@ -89,8 +103,10 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
         res.send(fileContent);
         
         // Nettoyer les fichiers temporaires
+        console.log(`Nettoyage des fichiers temporaires: ${audioPath}, ${outputFilePath}`);
         fs.unlinkSync(audioPath);
         fs.unlinkSync(outputFilePath);
+        console.log(`Nettoyage terminé, réponse envoyée avec succès`);
       } catch (readError) {
         console.error(`Erreur de lecture du fichier: ${readError}`);
         res.status(500).json({ success: false, error: 'Erreur lors de la lecture du fichier de sortie' });
