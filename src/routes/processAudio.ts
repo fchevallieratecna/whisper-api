@@ -1,63 +1,107 @@
-import express, { Router, Request, Response, RequestHandler } from 'express';
+import { Router, Request, Response } from 'express';
+import { UploadedFile, FileArray } from 'express-fileupload';
+import { exec } from 'child_process';
 import path from 'path';
-import fs from 'fs/promises';
-import { executeDiarizationProcess } from '../utils/runPython';
-import { z } from 'zod';
-import config from '../config';
-import { parseFile } from 'music-metadata';
+import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
+import os from 'os';
 
+interface RequestWithFiles extends Request {
+  files?: FileArray | null;
+}
 
-const router: Router = express.Router();
+const router = Router();
 
-// Schéma de validation Zod pour les options de requête
-const processOptionsSchema = z.object({
-  outputType: z.enum(['txt', 'srt']).default('txt'),
-  whisperModel: z.string().optional(),
-  language: z.string().optional(),
-  noStem: z.preprocess(val => val === 'true' || val === true, z.boolean().optional()),
-  suppressNumerals: z.preprocess(val => val === 'true' || val === true, z.boolean().optional()),
-  batchSize: z.preprocess(val => Number(val), z.number().optional()),
-  device: z.string().optional(),
-  parallel: z.preprocess(val => val === 'true' || val === true, z.boolean().optional()),
-});
-
-const processHandler: RequestHandler = async (req: Request, res: Response): Promise<void> => {
-  if (!req.files?.audio) {
-    res.status(400).json({ success: false, error: "Aucun fichier audio reçu" });
-    return;
-  }
-  const audioFile = Array.isArray(req.files.audio) ? req.files.audio[0] : req.files.audio;
-  const sanitizedFileName = audioFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const uploadPath = path.join(config.uploadPath, sanitizedFileName);
-
+const processAudio = async (req: RequestWithFiles, res: Response): Promise<void> => {
   try {
-    await audioFile.mv(uploadPath);
-    const optionsResult = processOptionsSchema.safeParse(req.body);
-    if (!optionsResult.success) {
-      await fs.unlink(uploadPath);
-      res.status(400).json({ success: false, error: "Options invalides", validationErrors: optionsResult.error.issues });
+    if (!req.files || !req.files.audio) {
+      res.status(400).json({ success: false, error: 'Aucun fichier audio fourni' });
       return;
     }
-    const options = optionsResult.data;
 
-    // Extraction de la durée réelle de l'audio
-    const metadata = await parseFile(uploadPath);
-    const audioDuration = metadata.format.duration;
-
-    const startTime = Date.now();
-    await executeDiarizationProcess(uploadPath, options);
-    const duration = (Date.now() - startTime) / 1000;
-
-    const { name } = path.parse(uploadPath);
-    const outputType = options.outputType || 'txt';
-    const outputFile = path.join(config.uploadPath, `${name}.${outputType}`);
-    const data = await fs.readFile(outputFile, 'utf8');
-    res.json({ success: true, outputType, content: data, duration, audioDuration });
+    const audioFile = req.files.audio as UploadedFile;
+    const tempDir = path.join(os.tmpdir(), 'whisperx-api');
+    
+    // Créer le répertoire temporaire s'il n'existe pas
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    // Générer des noms de fichiers uniques
+    const fileId = uuidv4();
+    const audioPath = path.join(tempDir, `${fileId}-${audioFile.name}`);
+    const outputPath = path.join(tempDir, `${fileId}-output`);
+    
+    // Enregistrer le fichier audio
+    await audioFile.mv(audioPath);
+    
+    // Récupérer les paramètres de la requête
+    const outputFormat = req.body.outputFormat || 'json';
+    const model = req.body.model || 'large-v3';
+    const language = req.body.language || '';
+    const batchSize = req.body.batchSize || '4';
+    const computeType = req.body.computeType || 'float16';
+    const hfToken = req.body.hfToken || '';
+    const diarize = req.body.diarize === 'true';
+    
+    // Construire la commande WhisperX CLI
+    let command = `whisperx_cli "${audioPath}" --model ${model} --batch_size ${batchSize} --compute_type ${computeType} --output "${outputPath}.${outputFormat}" --output_format ${outputFormat}`;
+    
+    // Ajouter les options conditionnelles
+    if (language) {
+      command += ` --language ${language}`;
+    }
+    
+    if (hfToken && diarize) {
+      command += ` --hf_token ${hfToken} --diarize`;
+    }
+    
+    // Exécuter la commande
+    exec(command, async (error, _stdout, stderr) => {
+      if (error) {
+        console.error(`Erreur d'exécution: ${error.message}`);
+        console.error(`stderr: ${stderr}`);
+        res.status(500).json({ success: false, error: 'Erreur lors du traitement audio' });
+        return;
+      }
+      
+      try {
+        // Lire le fichier de sortie
+        const outputFilePath = `${outputPath}.${outputFormat}`;
+        if (!fs.existsSync(outputFilePath)) {
+          res.status(500).json({ success: false, error: 'Fichier de sortie non généré' });
+          return;
+        }
+        
+        const fileContent = fs.readFileSync(outputFilePath, 'utf8');
+        
+        // Définir le type de contenu en fonction du format de sortie
+        let contentType = 'application/json';
+        if (outputFormat === 'txt') {
+          contentType = 'text/plain';
+        } else if (outputFormat === 'srt') {
+          contentType = 'text/plain';
+        }
+        
+        // Envoyer la réponse
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `attachment; filename="transcription.${outputFormat}"`);
+        res.send(fileContent);
+        
+        // Nettoyer les fichiers temporaires
+        fs.unlinkSync(audioPath);
+        fs.unlinkSync(outputFilePath);
+      } catch (readError) {
+        console.error(`Erreur de lecture du fichier: ${readError}`);
+        res.status(500).json({ success: false, error: 'Erreur lors de la lecture du fichier de sortie' });
+      }
+    });
   } catch (err) {
-    console.error("Erreur de traitement :", err);
-    res.status(500).json({ success: false, error: "Erreur lors du traitement audio" });
+    console.error('Erreur:', err);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
   }
 };
 
-router.post('/process', processHandler);
+router.route('/process').post(processAudio);
+
 export default router;

@@ -13,6 +13,17 @@ app.use(fileUpload());
 app.use(morgan('combined'));
 app.use(cors());
 
+// Middleware pour gérer les fichiers temporaires
+app.use((req, res, next) => {
+  // Nettoyer les fichiers temporaires après la réponse
+  res.on('finish', () => {
+    if (req.files) {
+      // Logique de nettoyage si nécessaire
+    }
+  });
+  next();
+});
+
 // Routes centralisées sous le préfixe /api
 app.use('/api', processAudioRoute);
 
@@ -46,14 +57,13 @@ app.get('/', (_req, res) => {
         <strong>POST /api/process</strong> : Traitement d'un fichier audio.
         <ul>
           <li><code>audio</code> – Fichier audio (obligatoire, multipart/form-data)</li>
-          <li><code>outputType</code> – Type de sortie désiré (optionnel : "txt" ou "srt", défaut "txt")</li>
-          <li><code>whisperModel</code> – Modèle Whisper (optionnel)</li>
-          <li><code>language</code> – Langue (optionnel)</li>
-          <li><code>noStem</code> – Désactivation de la racinisation (optionnel, booléen)</li>
-          <li><code>suppressNumerals</code> – Suppression des nombres (optionnel, booléen)</li>
-          <li><code>batchSize</code> – Taille des lots (optionnel, nombre)</li>
-          <li><code>device</code> – Périphérique de traitement (optionnel)</li>
-          <li><code>parallel</code> – Exécution parallèle (optionnel, booléen)</li>
+          <li><code>outputFormat</code> – Format de sortie (optionnel : "json", "txt" ou "srt", défaut "json")</li>
+          <li><code>model</code> – Modèle WhisperX (optionnel, défaut "large-v3")</li>
+          <li><code>language</code> – Langue (optionnel, ex: fr, en)</li>
+          <li><code>batchSize</code> – Taille des lots (optionnel, défaut "4")</li>
+          <li><code>computeType</code> – Type de calcul (optionnel, défaut "float16")</li>
+          <li><code>hfToken</code> – Token Hugging Face (requis pour la diarization)</li>
+          <li><code>diarize</code> – Active la diarization (optionnel, "true" ou "false")</li>
         </ul>
         <p>Exemple de formulaire :</p>
         <form action="/api/process" method="post" enctype="multipart/form-data">
@@ -64,30 +74,25 @@ app.get('/', (_req, res) => {
           </fieldset>
           <fieldset>
             <legend>Options</legend>
-            <label for="outputType">Type de sortie :</label>
-            <select id="outputType" name="outputType">
-              <option value="txt" selected>txt</option>
+            <label for="outputFormat">Format de sortie :</label>
+            <select id="outputFormat" name="outputFormat">
+              <option value="json" selected>json</option>
+              <option value="txt">txt</option>
               <option value="srt">srt</option>
             </select>
-            <label for="whisperModel">Modèle Whisper :</label>
-            <input type="text" id="whisperModel" name="whisperModel" placeholder="ex: base, small, medium">
+            <label for="model">Modèle WhisperX :</label>
+            <input type="text" id="model" name="model" placeholder="ex: large-v3, medium, small" value="large-v3">
             <label for="language">Langue :</label>
-            <input type="text" id="language" name="language" placeholder="ex: fr">
-            <label>
-              <input type="checkbox" id="noStem" name="noStem" value="true">
-              Désactiver la racinisation
-            </label>
-            <label>
-              <input type="checkbox" id="suppressNumerals" name="suppressNumerals" value="true">
-              Supprimer les nombres
-            </label>
+            <input type="text" id="language" name="language" placeholder="ex: fr, en (vide = détection auto)">
             <label for="batchSize">Taille des lots :</label>
-            <input type="number" id="batchSize" name="batchSize" placeholder="ex: 5">
-            <label for="device">Périphérique :</label>
-            <input type="text" id="device" name="device" placeholder="ex: cuda, cpu">
+            <input type="number" id="batchSize" name="batchSize" placeholder="ex: 4" value="4">
+            <label for="computeType">Type de calcul :</label>
+            <input type="text" id="computeType" name="computeType" placeholder="ex: float16, int8" value="float16">
+            <label for="hfToken">Token Hugging Face :</label>
+            <input type="text" id="hfToken" name="hfToken" placeholder="Requis pour la diarization">
             <label>
-              <input type="checkbox" id="parallel" name="parallel" value="true">
-              Exécution parallèle
+              <input type="checkbox" id="diarize" name="diarize" value="true">
+              Activer la diarization (nécessite un token HF)
             </label>
           </fieldset>
           <button type="submit">Envoyer</button>
