@@ -73,7 +73,7 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
     }
 
     if (nbSpeaker) {
-      command += ` --max_speakers ${nbSpeaker} --min_speakers ${nbSpeaker}`;
+      command += ` --nb_speaker ${nbSpeaker}`;
     }
     
     // Exécuter la commande
