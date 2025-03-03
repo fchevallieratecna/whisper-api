@@ -44,6 +44,7 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
     const diarize = req.body.diarize !== 'false';
     const initialPrompt = req.body.initialPrompt || '';
     const debug = req.body.debug === 'true';
+    const nbSpeaker = req.body.nbSpeaker || 2;
     
     // Construire la commande WhisperX CLI
     let command = `whisperx_cli "${audioPath}" --model ${model} --batch_size ${batchSize} --compute_type ${computeType} --output "${outputPath}.${outputFormat}" --output_format ${outputFormat}`;
@@ -69,6 +70,10 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
     
     if (debug) {
       command += ` --debug`;
+    }
+
+    if (nbSpeaker) {
+      command += ` --max_speakers ${nbSpeaker} --min_speakers ${nbSpeaker}`;
     }
     
     // Exécuter la commande
