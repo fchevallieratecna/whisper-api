@@ -79,7 +79,7 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
     
     // Créer un job et le démarrer
     const jobId = uuidv4();
-    const job = jobManager.createJob(jobId, command, outputPath, outputFormat);
+    jobManager.createJob(jobId, command, outputPath, outputFormat);
     
     // Démarrer le job de manière asynchrone
     setTimeout(() => {
