@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import os from 'os';
+import jobManager from '../config/jobManager';
 
 interface RequestWithFiles extends Request {
   files?: FileArray | null;
@@ -76,72 +77,44 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
       command += ` --nb_speaker ${nbSpeaker}`;
     }
     
-    // Exécuter la commande
-    console.log(`Exécution de la commande: ${command}`);
+    // Créer un job et le démarrer
+    const jobId = uuidv4();
+    const job = jobManager.createJob(jobId, command, outputPath, outputFormat);
     
-    // Utiliser spawn au lieu de exec pour capturer la sortie en temps réel
-    const childProcess = require('child_process').spawn(command, [], { 
-      shell: true,
-      stdio: 'pipe'
-    });
-    
-    // Capturer la sortie standard en temps réel
-    childProcess.stdout.on('data', (data: Buffer) => {
-      console.log(`stdout: ${data.toString()}`);
-    });
-    
-    // Capturer la sortie d'erreur en temps réel
-    childProcess.stderr.on('data', (data: Buffer) => {
-      console.log(`stderr: ${data.toString()}`);
-    });
-    
-    // Gérer la fin du processus
-    childProcess.on('close', async (code: number) => {
-      console.log(`Le processus s'est terminé avec le code: ${code}`);
-      
-      if (code !== 0) {
-        console.error(`Erreur: le processus s'est terminé avec le code ${code}`);
-        res.status(500).json({ success: false, error: 'Erreur lors du traitement audio' });
-        return;
-      }
-      
+    // Démarrer le job de manière asynchrone
+    setTimeout(() => {
       try {
-        console.log(`Tentative de lecture du fichier de sortie: ${outputPath}.${outputFormat}`);
-        // Lire le fichier de sortie
-        const outputFilePath = `${outputPath}.${outputFormat}`;
-        if (!fs.existsSync(outputFilePath)) {
-          console.error(`Fichier de sortie non trouvé: ${outputFilePath}`);
-          res.status(500).json({ success: false, error: 'Fichier de sortie non généré' });
-          return;
-        }
+        jobManager.startJob(jobId);
         
-        console.log(`Fichier de sortie trouvé, lecture en cours...`);
-        const fileContent = fs.readFileSync(outputFilePath, 'utf8');
-        console.log(`Fichier lu avec succès, taille: ${fileContent.length} caractères`);
+        // Configurer un écouteur pour la fin du job
+        jobManager.once('job-completed', (completedJobId: string) => {
+          if (completedJobId === jobId) {
+            console.log(`Job ${jobId} terminé avec succès`);
+          }
+        });
         
-        // Définir le type de contenu en fonction du format de sortie
-        let contentType = 'application/json';
-        if (outputFormat === 'txt') {
-          contentType = 'text/plain';
-        } else if (outputFormat === 'srt') {
-          contentType = 'text/plain';
-        }
-        
-        // Envoyer la réponse
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Content-Disposition', `attachment; filename="transcription.${outputFormat}"`);
-        res.send(fileContent);
-        
-        // Nettoyer les fichiers temporaires
-        console.log(`Nettoyage des fichiers temporaires: ${audioPath}, ${outputFilePath}`);
-        fs.unlinkSync(audioPath);
-        fs.unlinkSync(outputFilePath);
-        console.log(`Nettoyage terminé, réponse envoyée avec succès`);
-      } catch (readError) {
-        console.error(`Erreur de lecture du fichier: ${readError}`);
-        res.status(500).json({ success: false, error: 'Erreur lors de la lecture du fichier de sortie' });
+        jobManager.once('job-failed', (failedJobId: string, error: string) => {
+          if (failedJobId === jobId) {
+            console.error(`Job ${jobId} échoué: ${error}`);
+          }
+        });
+      } catch (error) {
+        console.error(`Erreur lors du démarrage du job ${jobId}:`, error);
+      }
+    }, 0);
+    
+    // Retourner immédiatement l'ID du job
+    res.status(202).json({ 
+      success: true, 
+      message: 'Traitement audio démarré', 
+      jobId,
+      links: {
+        status: `/api/jobs/${jobId}`,
+        logs: `/api/jobs/${jobId}/logs`,
+        result: `/api/jobs/${jobId}/result`
       }
     });
+    
   } catch (err) {
     console.error('Erreur:', err);
     res.status(500).json({ success: false, error: 'Erreur serveur' });

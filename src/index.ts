@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import fileUpload from 'express-fileupload';
 import processAudioRoute from './routes/processAudio';
+import jobsRoute from './routes/jobs';
 import config from './config';
 import morgan from 'morgan';
 import cors from 'cors';
@@ -26,6 +27,7 @@ app.use((req, res, next) => {
 
 // Routes centralisées sous le préfixe /api
 app.use('/api', processAudioRoute);
+app.use('/api/jobs', jobsRoute);
 
 app.get('/', (_req, res) => {
   res.send(`<!DOCTYPE html>
@@ -37,6 +39,7 @@ app.get('/', (_req, res) => {
     body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 30px; }
     .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     h1 { color: #333; text-align: center; }
+    h2 { color: #555; margin-top: 20px; }
     ul { list-style: none; padding: 0; }
     li { margin-bottom: 10px; }
     form { margin-top: 20px; }
@@ -45,6 +48,7 @@ app.get('/', (_req, res) => {
     button { padding: 10px; background: #333; color: #fff; border: none; width: 100%; border-radius: 4px; cursor: pointer; }
     fieldset { margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; }
     legend { font-weight: bold; }
+    code { background: #f8f8f8; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
   </style>
 </head>
 <body>
@@ -65,40 +69,56 @@ app.get('/', (_req, res) => {
           <li><code>hfToken</code> – Token Hugging Face (requis pour la diarization)</li>
           <li><code>diarize</code> – Active la diarization (optionnel, "true" ou "false")</li>
         </ul>
-        <p>Exemple de formulaire :</p>
-        <form action="/api/process" method="post" enctype="multipart/form-data">
-          <fieldset>
-            <legend>Fichier audio</legend>
-            <label for="audio">Fichier audio (obligatoire) :</label>
-            <input type="file" id="audio" name="audio" accept="audio/*" required>
-          </fieldset>
-          <fieldset>
-            <legend>Options</legend>
-            <label for="outputFormat">Format de sortie :</label>
-            <select id="outputFormat" name="outputFormat">
-              <option value="json" selected>json</option>
-              <option value="txt">txt</option>
-              <option value="srt">srt</option>
-            </select>
-            <label for="model">Modèle WhisperX :</label>
-            <input type="text" id="model" name="model" placeholder="ex: large-v3, medium, small" value="large-v3">
-            <label for="language">Langue :</label>
-            <input type="text" id="language" name="language" placeholder="ex: fr, en (vide = détection auto)">
-            <label for="batchSize">Taille des lots :</label>
-            <input type="number" id="batchSize" name="batchSize" placeholder="ex: 4" value="4">
-            <label for="computeType">Type de calcul :</label>
-            <input type="text" id="computeType" name="computeType" placeholder="ex: float16, int8" value="float16">
-            <label for="hfToken">Token Hugging Face :</label>
-            <input type="text" id="hfToken" name="hfToken" placeholder="Requis pour la diarization">
-            <label>
-              <input type="checkbox" id="diarize" name="diarize" value="true">
-              Activer la diarization (nécessite un token HF)
-            </label>
-          </fieldset>
-          <button type="submit">Envoyer</button>
-        </form>
+        <p>Cette route retourne maintenant un ID de job au lieu d'attendre la fin du traitement.</p>
+      </li>
+      
+      <h2>Gestion des Jobs</h2>
+      <li>
+        <strong>GET /api/jobs</strong> : Liste tous les jobs en cours et terminés.
+      </li>
+      <li>
+        <strong>GET /api/jobs/:id</strong> : Récupère les informations d'un job spécifique.
+      </li>
+      <li>
+        <strong>GET /api/jobs/:id/logs</strong> : Récupère les logs d'un job spécifique.
+      </li>
+      <li>
+        <strong>GET /api/jobs/:id/result</strong> : Récupère le résultat d'un job terminé.
       </li>
     </ul>
+    
+    <p>Exemple de formulaire :</p>
+    <form action="/api/process" method="post" enctype="multipart/form-data">
+      <fieldset>
+        <legend>Fichier audio</legend>
+        <label for="audio">Fichier audio (obligatoire) :</label>
+        <input type="file" id="audio" name="audio" accept="audio/*" required>
+      </fieldset>
+      <fieldset>
+        <legend>Options</legend>
+        <label for="outputFormat">Format de sortie :</label>
+        <select id="outputFormat" name="outputFormat">
+          <option value="json" selected>json</option>
+          <option value="txt">txt</option>
+          <option value="srt">srt</option>
+        </select>
+        <label for="model">Modèle WhisperX :</label>
+        <input type="text" id="model" name="model" placeholder="ex: large-v3, medium, small" value="large-v3">
+        <label for="language">Langue :</label>
+        <input type="text" id="language" name="language" placeholder="ex: fr, en (vide = détection auto)">
+        <label for="batchSize">Taille des lots :</label>
+        <input type="number" id="batchSize" name="batchSize" placeholder="ex: 4" value="4">
+        <label for="computeType">Type de calcul :</label>
+        <input type="text" id="computeType" name="computeType" placeholder="ex: float16, int8" value="float16">
+        <label for="hfToken">Token Hugging Face :</label>
+        <input type="text" id="hfToken" name="hfToken" placeholder="Requis pour la diarization">
+        <label>
+          <input type="checkbox" id="diarize" name="diarize" value="true">
+          Activer la diarization (nécessite un token HF)
+        </label>
+      </fieldset>
+      <button type="submit">Envoyer</button>
+    </form>
   </div>
 </body>
 </html>`);
