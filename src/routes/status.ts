@@ -4,7 +4,7 @@ import { execSync } from 'child_process';
 
 const router = Router();
 
-router.get('/status', (req: Request, res: Response) => {
+router.get('/status', (_req: Request, res: Response) => {
   let whisperVersion;
   try {
     whisperVersion = execSync('whisperx_cli --version', { encoding: 'utf8' }).trim();
