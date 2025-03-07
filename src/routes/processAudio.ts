@@ -5,7 +5,7 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import os from 'os';
 import jobManager from '../config/jobManager';
-
+import status from './status';
 interface RequestWithFiles extends Request {
   files?: FileArray | null;
 }
@@ -131,5 +131,6 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
 };
 
 router.route('/process').post(processAudio);
+router.route('/status').get(status);
 
 export default router;

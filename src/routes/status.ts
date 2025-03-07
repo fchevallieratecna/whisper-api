@@ -17,15 +17,15 @@ router.get('/status', (_req: Request, res: Response) => {
   switch(platform) {
     case 'win32':
       osName = 'windows';
-      computeType = 'int8';
+      computeType = 'float16';
       break;
     case 'darwin':
       osName = 'mac';
-      computeType = 'float16';
+      computeType = 'int8';
       break;
     case 'linux':
       osName = 'linux';
-      computeType = 'float32';
+      computeType = 'float16';
       break;
     default:
       osName = platform;
