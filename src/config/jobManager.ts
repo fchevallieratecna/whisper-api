@@ -38,6 +38,7 @@ class JobManager extends EventEmitter {
     };
 
     this.jobs.set(id, job);
+    this.addJobLog(id, "Job créé et en attente de démarrage");
     return job;
   }
 
@@ -57,6 +58,9 @@ class JobManager extends EventEmitter {
 
     job.status = 'running';
     job.updatedAt = new Date();
+    
+    this.addJobLog(id, "Préparation du traitement audio...");
+    this.addJobLog(id, "Initialisation du processus WhisperX...");
 
     const process = spawn(job.command, [], { 
       shell: true,
@@ -64,28 +68,32 @@ class JobManager extends EventEmitter {
     });
 
     job.process = process;
+    this.addJobLog(id, "Processus WhisperX démarré");
+    this.addJobLog(id, "Chargement du modèle en cours...");
 
     process.stdout.on('data', (data: Buffer) => {
-      const logLine = data.toString().trim();
-      job.logs.push(logLine);
-      this.emit('job-log', id, logLine);
-      console.log(`[Job ${id}] stdout: ${logLine}`);
+      const logLines = data.toString().split('\n').filter(line => line.trim());
+      logLines.forEach(logLine => {
+        this.addJobLog(id, logLine.trim());
+      });
     });
 
     process.stderr.on('data', (data: Buffer) => {
-      const logLine = data.toString().trim();
-      job.logs.push(logLine);
-      this.emit('job-log', id, logLine);
-      console.log(`[Job ${id}] stderr: ${logLine}`);
+      const logLines = data.toString().split('\n').filter(line => line.trim());
+      logLines.forEach(logLine => {
+        this.addJobLog(id, `ERREUR: ${logLine.trim()}`);
+      });
     });
 
     process.on('close', (code: number) => {
       if (code === 0) {
         job.status = 'completed';
+        this.addJobLog(id, "Traitement terminé avec succès");
         this.emit('job-completed', id);
       } else {
         job.status = 'failed';
         job.error = `Process exited with code ${code}`;
+        this.addJobLog(id, `Échec du traitement: code d'erreur ${code}`);
         this.emit('job-failed', id, job.error);
       }
       job.updatedAt = new Date();
@@ -110,6 +118,18 @@ class JobManager extends EventEmitter {
       return null;
     }
     return job.logs[job.logs.length - 1];
+  }
+
+  addJobLog(id: string, message: string): void {
+    const job = this.jobs.get(id);
+    if (!job) return;
+    
+    const timestamp = new Date().toISOString();
+    const formattedLog = `[${timestamp}] ${message}`;
+    
+    job.logs.push(formattedLog);
+    this.emit('job-log', id, formattedLog);
+    console.log(`[Job ${id}] ${message}`);
   }
 }
 

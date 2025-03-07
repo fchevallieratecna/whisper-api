@@ -81,6 +81,21 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
     const jobId = uuidv4();
     jobManager.createJob(jobId, command, outputPath, outputFormat);
     
+    // Ajouter des logs détaillés sur la configuration
+    jobManager.addJobLog(jobId, `Fichier audio reçu: ${audioFile.name} (${(audioFile.size / 1024 / 1024).toFixed(2)} MB)`);
+    jobManager.addJobLog(jobId, `Format de sortie: ${outputFormat}`);
+    jobManager.addJobLog(jobId, `Modèle WhisperX: ${model}`);
+    jobManager.addJobLog(jobId, `Langue: ${language || 'auto-détection'}`);
+    jobManager.addJobLog(jobId, `Taille des lots: ${batchSize}`);
+    jobManager.addJobLog(jobId, `Type de calcul: ${computeType}`);
+    jobManager.addJobLog(jobId, `Diarization: ${diarize ? 'activée' : 'désactivée'}`);
+    if (initialPrompt) {
+      jobManager.addJobLog(jobId, `Prompt initial: "${initialPrompt}"`);
+    }
+    if (nbSpeaker && diarize) {
+      jobManager.addJobLog(jobId, `Nombre de locuteurs: ${nbSpeaker}`);
+    }
+    
     // Démarrer le job de manière asynchrone
     setTimeout(() => {
       try {
@@ -100,6 +115,7 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
         });
       } catch (error) {
         console.error(`Erreur lors du démarrage du job ${jobId}:`, error);
+        jobManager.addJobLog(jobId, `Erreur lors du démarrage: ${error}`);
       }
     }, 0);
     
@@ -111,6 +127,7 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
       links: {
         status: `/api/jobs/${jobId}`,
         logs: `/api/jobs/${jobId}/logs`,
+        logsStream: `/api/jobs/${jobId}/logs/stream`,
         result: `/api/jobs/${jobId}/result`
       }
     });
