@@ -69,19 +69,11 @@ class JobManager extends EventEmitter {
 
     job.process = process;
     this.addJobLog(id, "Processus WhisperX démarré");
-    this.addJobLog(id, "Chargement du modèle en cours...");
 
     process.stdout.on('data', (data: Buffer) => {
       const logLines = data.toString().split('\n').filter(line => line.trim());
       logLines.forEach(logLine => {
         this.addJobLog(id, logLine.trim());
-      });
-    });
-
-    process.stderr.on('data', (data: Buffer) => {
-      const logLines = data.toString().split('\n').filter(line => line.trim());
-      logLines.forEach(logLine => {
-        this.addJobLog(id, `ERREUR: ${logLine.trim()}`);
       });
     });
 

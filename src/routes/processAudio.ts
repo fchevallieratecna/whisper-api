@@ -49,7 +49,7 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
     
     // Construire la commande WhisperX CLI
     let command = `whisperx_cli "${audioPath}" --model ${model} --batch_size ${batchSize} --compute_type ${computeType} --output "${outputPath}.${outputFormat}" --output_format ${outputFormat}`;
-    
+    console.log(command);
     // Ajouter les options conditionnelles
     if (language) {
       command += ` --language ${language}`;
@@ -81,14 +81,6 @@ const processAudio = async (req: RequestWithFiles, res: Response): Promise<void>
     const jobId = uuidv4();
     jobManager.createJob(jobId, command, outputPath, outputFormat);
     
-    // Ajouter des logs détaillés sur la configuration
-    jobManager.addJobLog(jobId, `Fichier audio reçu: ${audioFile.name} (${(audioFile.size / 1024 / 1024).toFixed(2)} MB)`);
-    jobManager.addJobLog(jobId, `Format de sortie: ${outputFormat}`);
-    jobManager.addJobLog(jobId, `Modèle WhisperX: ${model}`);
-    jobManager.addJobLog(jobId, `Langue: ${language || 'auto-détection'}`);
-    jobManager.addJobLog(jobId, `Taille des lots: ${batchSize}`);
-    jobManager.addJobLog(jobId, `Type de calcul: ${computeType}`);
-    jobManager.addJobLog(jobId, `Diarization: ${diarize ? 'activée' : 'désactivée'}`);
     if (initialPrompt) {
       jobManager.addJobLog(jobId, `Prompt initial: "${initialPrompt}"`);
     }
