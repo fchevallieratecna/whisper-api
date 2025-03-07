@@ -62,22 +62,23 @@ class JobManager extends EventEmitter {
     this.addJobLog(id, "Préparation du traitement audio...");
     this.addJobLog(id, "Initialisation du processus WhisperX...");
 
-    const process = spawn(job.command, [], { 
+    const childProcess = spawn(job.command, [], { 
       shell: true,
-      stdio: 'pipe'
+      stdio: 'pipe',
+      env: { ...process.env, PYTHONUNBUFFERED: '1' }
     });
 
-    job.process = process;
+    job.process = childProcess;
     this.addJobLog(id, "Processus WhisperX démarré");
 
-    process.stdout.on('data', (data: Buffer) => {
+    childProcess.stdout.on('data', (data: Buffer) => {
       const logLines = data.toString().split('\n').filter(line => line.trim());
       logLines.forEach(logLine => {
         this.addJobLog(id, logLine.trim());
       });
     });
 
-    process.on('close', (code: number) => {
+    childProcess.on('close', (code: number) => {
       if (code === 0) {
         job.status = 'completed';
         this.addJobLog(id, "Traitement terminé avec succès");
