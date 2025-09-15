@@ -3,6 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import fileUpload from 'express-fileupload';
 import processAudioRoute from './routes/processAudio';
 import jobsRoute from './routes/jobs';
+import docsRoute from './routes/docs';
 import config from './config';
 import morgan from 'morgan';
 import cors from 'cors';
@@ -28,6 +29,7 @@ app.use((req, res, next) => {
 // Routes centralisées sous le préfixe /api
 app.use('/api', processAudioRoute);
 app.use('/api/jobs', jobsRoute);
+app.use('/api', docsRoute);
 
 app.get('/', (_req, res) => {
   res.send(`<!DOCTYPE html>
@@ -53,8 +55,14 @@ app.get('/', (_req, res) => {
 </head>
 <body>
   <div class="container">
-    <h1>Documentation de l'API</h1>
-    <p>Endpoints disponibles :</p>
+    <h1>Whisper API - Service de transcription audio</h1>
+
+    <h2>🔗 Documentation Interactive</h2>
+    <p><strong><a href="/api/docs" target="_blank">📖 Documentation OpenAPI/Swagger</a></strong> - Interface interactive complète</p>
+    <p><strong><a href="/api/openapi.json" target="_blank">📄 Spécification OpenAPI JSON</a></strong> - Pour génération automatique de clients</p>
+    <p><strong><a href="/api/openapi.yaml" target="_blank">📄 Spécification OpenAPI YAML</a></strong> - Format YAML</p>
+
+    <h2>📋 Endpoints disponibles</h2>
     <ul>
       <li><strong>GET /</strong> : Documentation et exemples.</li>
       <li>
