@@ -1,6 +1,6 @@
 {
   "name": "whisper-diarization-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "API server to run the whisper-diarization Python scripts",
   "main": "index.js",
   "scripts": {
